@@ -1,0 +1,17 @@
+node_modules/
+.env
+.env.*
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+*.temp
+tmp/
+temp/
+coverage/
+build/
+dist/
+out/
+frontend/ar/assets/targets/*.mind

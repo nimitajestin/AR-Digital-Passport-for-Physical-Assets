@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AR Digital Passport</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="./css/ar.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Physical Asset Intelligence</p>
+          <h1>AR Digital Passport</h1>
+        </div>
+        <button id="refreshScanBtn" class="ghost-button" type="button">Refresh</button>
+      </header>
+
+      <main class="content-grid">
+        <section class="camera-panel card">
+          <div id="scanStatus" class="scan-status status-idle" aria-live="polite">
+            <span class="status-indicator"></span>
+            <span>Scan an asset</span>
+          </div>
+
+          <div class="scanner-frame">
+            <a-scene
+              embedded
+              mindar-image="imageTargetSrc: ./assets/targets/placeholder-target.mind; maxTrack: 3; warmupTolerance: 5;"
+              color-space="sRGB"
+              renderer="colorManagement: true"
+              vr-mode-ui="enabled: false"
+              device-orientation-permission-ui="enabled: false"
+            >
+              <a-assets>
+                <img id="asset-marker-preview" alt="Asset marker preview" />
+              </a-assets>
+
+              <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+
+              <a-entity id="target-0" mindar-image-target="targetIndex: 0">
+                <a-box color="#3dd9c8" scale="0.45 0.45 0.45" position="0 0 0"></a-box>
+              </a-entity>
+
+              <a-entity id="target-1" mindar-image-target="targetIndex: 1">
+                <a-cylinder color="#7e8cff" radius="0.2" height="0.6" position="0 0 0"></a-cylinder>
+              </a-entity>
+
+              <a-entity id="target-2" mindar-image-target="targetIndex: 2">
+                <a-torus color="#f18f01" radius="0.3" tube="0.06" position="0 0 0"></a-torus>
+              </a-entity>
+            </a-scene>
+          </div>
+
+          <div class="target-nav">
+            <p class="target-label">Available asset markers</p>
+            <div id="targetButtons" class="target-buttons" aria-label="Target selector"></div>
+          </div>
+        </section>
+
+        <aside id="assetCard" class="asset-card card" aria-live="polite">
+          <div class="asset-card-header">
+            <div>
+              <p class="eyebrow">Asset Status</p>
+              <h2>Loading asset</h2>
+            </div>
+            <span class="status-badge status-loading">Loading</span>
+          </div>
+
+          <div class="asset-meta">
+            <div class="meta-row">
+              <span class="meta-key">Asset ID</span>
+              <span id="assetId">--</span>
+            </div>
+            <div class="meta-row">
+              <span class="meta-key">Category</span>
+              <span id="category">--</span>
+            </div>
+            <div class="meta-row">
+              <span class="meta-key">Location</span>
+              <span id="location">--</span>
+            </div>
+            <div class="meta-row">
+              <span class="meta-key">Status</span>
+              <span id="status">--</span>
+            </div>
+          </div>
+
+          <div class="description-block">
+            <h3>Description</h3>
+            <p id="description">Waiting for an asset scan.</p>
+          </div>
+
+          <div class="maintenance-grid">
+            <div>
+              <span class="mini-label">Last maintenance</span>
+              <strong id="lastMaintenance">--</strong>
+            </div>
+            <div>
+              <span class="mini-label">Next maintenance</span>
+              <strong id="nextMaintenance">--</strong>
+            </div>
+          </div>
+
+          <button class="primary-button" type="button">Report an issue</button>
+        </aside>
+      </main>
+    </div>
+
+    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mindar-image-aframe@1.2.0/dist/mindar-image-aframe.prod.js"></script>
+    <script src="./js/config.js"></script>
+    <script src="./js/api.js"></script>
+    <script src="./js/ui.js"></script>
+    <script src="./js/ar.js"></script>
+  </body>
+</html>
