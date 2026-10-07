@@ -1,6 +1,10 @@
 # AR Digital Passport for Physical Assets
 
-A lightweight AR/WebAR foundation for scanning physical assets with an image marker and displaying a digital passport in the browser.
+This repository contains the Dev 1 AR/WebAR foundation for the project described in the project specification. The system follows the real-world flow:
+
+Physical Asset → Image Marker → MindAR Target → Asset/Marker ID → REST API → Asset Information → AR Information Panel
+
+The current scope is intentionally limited to the AR front-end foundation so the backend and database teams can build against a clear API contract later.
 
 ## Technology Stack
 

@@ -27,7 +27,11 @@ Developer 1 is responsible for the AR/WebAR mobile foundation, including:
 
 ## How the AR Page Works
 
-The AR module is a static front-end page that loads a MindAR image-tracking scene. The page expects a marker target file in the `frontend/ar/assets/targets/` directory. Once the marker is detected, the app can look up an asset ID and show a digital passport panel with asset details.
+The AR module is a static front-end page that loads a MindAR image-tracking scene. The application is designed around the project flow:
+
+Physical Asset → Image Marker → MindAR Target → Asset/Marker ID → REST API → Asset Information → AR Information Panel
+
+The page expects a marker target file in the `frontend/ar/assets/targets/` directory. Once the marker is detected, the app can look up an asset ID and show a digital passport panel with asset details.
 
 ## Where the MindAR Target File Goes
 
