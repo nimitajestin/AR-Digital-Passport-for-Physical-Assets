@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AR Digital Passport</title>
+    <meta name="description" content="AR Digital Passport for physical assets in campus and facility environments." />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -13,14 +14,14 @@
     <div class="app-shell">
       <header class="topbar">
         <div>
-          <p class="eyebrow">Physical Asset Intelligence</p>
+          <p class="eyebrow">Campus Asset Intelligence</p>
           <h1>AR Digital Passport</h1>
         </div>
-        <button id="refreshScanBtn" class="ghost-button" type="button">Refresh</button>
+        <button id="refreshScanBtn" class="secondary-button" type="button">Refresh</button>
       </header>
 
       <main class="content-grid">
-        <section class="camera-panel card">
+        <section class="camera-panel panel-card" aria-label="AR scan panel">
           <div id="scanStatus" class="scan-status status-idle" aria-live="polite">
             <span class="status-indicator"></span>
             <span>Scan an asset</span>
@@ -36,41 +37,48 @@
               device-orientation-permission-ui="enabled: false"
             >
               <a-assets>
-                <img id="asset-marker-preview" alt="Asset marker preview" />
+                <img id="markerImage" alt="Asset marker sample" />
               </a-assets>
 
-              <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+              <a-camera position="0 0 0" look-controls="enabled: false" cursor="fuse: false; rayOrigin: mouse;"></a-camera>
 
               <a-entity id="target-0" mindar-image-target="targetIndex: 0">
-                <a-box color="#3dd9c8" scale="0.45 0.45 0.45" position="0 0 0"></a-box>
+                <a-box color="#2b6a62" scale="0.42 0.42 0.42" position="0 0 0.05"></a-box>
               </a-entity>
 
               <a-entity id="target-1" mindar-image-target="targetIndex: 1">
-                <a-cylinder color="#7e8cff" radius="0.2" height="0.6" position="0 0 0"></a-cylinder>
+                <a-cylinder color="#c67a3a" radius="0.18" height="0.55" position="0 0 0.05"></a-cylinder>
               </a-entity>
 
               <a-entity id="target-2" mindar-image-target="targetIndex: 2">
-                <a-torus color="#f18f01" radius="0.3" tube="0.06" position="0 0 0"></a-torus>
+                <a-torus color="#6a7bff" radius="0.28" tube="0.06" position="0 0 0.05"></a-torus>
               </a-entity>
             </a-scene>
           </div>
 
-          <div class="target-nav">
-            <p class="target-label">Available asset markers</p>
-            <div id="targetButtons" class="target-buttons" aria-label="Target selector"></div>
+          <div class="target-panel">
+            <div class="target-header">
+              <p class="target-label">Asset markers</p>
+              <span class="target-count">3 targets</span>
+            </div>
+            <div id="targetButtons" class="target-buttons" aria-label="Marker selector"></div>
           </div>
         </section>
 
-        <aside id="assetCard" class="asset-card card" aria-live="polite">
+        <aside id="assetCard" class="asset-card panel-card" aria-live="polite">
           <div class="asset-card-header">
             <div>
-              <p class="eyebrow">Asset Status</p>
-              <h2>Loading asset</h2>
+              <p class="eyebrow">Asset status</p>
+              <h2>Asset passport</h2>
             </div>
             <span class="status-badge status-loading">Loading</span>
           </div>
 
           <div class="asset-meta">
+            <div class="meta-row">
+              <span class="meta-key">Asset name</span>
+              <span id="assetName">--</span>
+            </div>
             <div class="meta-row">
               <span class="meta-key">Asset ID</span>
               <span id="assetId">--</span>
@@ -105,7 +113,12 @@
             </div>
           </div>
 
-          <button class="primary-button" type="button">Report an issue</button>
+          <div class="action-group" aria-label="Asset actions">
+            <button class="primary-button" type="button" data-action="details">View details</button>
+            <button class="secondary-button" type="button" data-action="maintenance">Maintenance history</button>
+            <button class="secondary-button" type="button" data-action="issue">Report issue</button>
+            <button class="ghost-button" type="button" data-action="close">Close</button>
+          </div>
         </aside>
       </main>
     </div>

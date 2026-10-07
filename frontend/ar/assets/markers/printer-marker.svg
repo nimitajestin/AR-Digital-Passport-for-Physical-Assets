@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="640" viewBox="0 0 640 640">
+  <rect width="640" height="640" rx="48" fill="#f7f1ea"/>
+  <rect x="56" y="56" width="528" height="528" rx="32" fill="#fffdf9" stroke="#1b1d1f" stroke-width="8"/>
+  <rect x="150" y="180" width="340" height="180" rx="22" fill="#b86d2f"/>
+  <rect x="190" y="214" width="260" height="110" rx="14" fill="#f7f1ea"/>
+  <path d="M200 420h240M234 470h172" stroke="#1b1d1f" stroke-width="12" stroke-linecap="round"/>
+  <path d="M270 206v-50M370 206v-50" stroke="#1b1d1f" stroke-width="10" stroke-linecap="round"/>
+  <text x="320" y="134" text-anchor="middle" font-family="Arial, sans-serif" font-size="28" fill="#1b1d1f" font-weight="700">3D PRINTER</text>
+</svg>
