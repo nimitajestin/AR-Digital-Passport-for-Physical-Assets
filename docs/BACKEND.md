@@ -64,7 +64,10 @@ psql "$DATABASE_URL" -f database/seed.sql
 # helper (runs schema via pg driver):
 cd backend && npm run db:init
 ```
-Seed is idempotent (`ON CONFLICT` upserts) and provides 7 assets, 4 locations, 6 markers, 8 maintenance rows, 4 issues.
+Seed provides 7 assets, 4 locations, 6 markers, 8 maintenance rows, 4 issues.
+Locations, assets, and markers upsert (`ON CONFLICT`). **Re-running `database/seed.sql`
+can duplicate `maintenance_records` and `issues`** — those inserts have no unique
+key. Seed once on a clean database.
 
 ## Testing
 ```bash
