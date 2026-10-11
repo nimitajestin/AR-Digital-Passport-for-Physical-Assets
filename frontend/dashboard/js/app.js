@@ -2,7 +2,7 @@
 (function () {
   'use strict';
   var api = window.DashboardAPI;
-  var state = { assets: [], locations: [], issues: [], editingId: null, deleteId: null };
+  var state = { assets: [], allAssets: [], locations: [], issues: [], openIssueCount: 0, editingId: null, deleteId: null };
   var $ = function (id) { return document.getElementById(id); };
 
   function alert(msg, kind) {
@@ -42,6 +42,7 @@
 
       await refreshAssets();
       await refreshIssues();
+      await refreshSummaryStats();
     } catch (err) {
       setTableState('API unavailable: ' + apiErrorMessage(err) + ' — check the API URL above and that the backend is running.');
       $('issueState').textContent = 'Issues unavailable: backend is not reachable.';
@@ -74,17 +75,27 @@
       state.assets = res.data || [];
       state.lastSync = new Date();
       renderAssets();
-      renderStats();
     } catch (err) {
       if (!silent) setTableState('Could not load assets: ' + apiErrorMessage(err));
     }
   }
 
+  async function refreshSummaryStats() {
+    try {
+      var assets = await api.listAssets({ limit: 100 });
+      var open = await api.listIssues({ status: 'open', limit: 100 });
+      state.allAssets = assets.data || [];
+      state.openIssueCount = (open.data || []).length;
+      renderStats();
+    } catch (err) { /* table/issue panels already show the failure */ }
+  }
+
   function renderStats() {
-    $('statTotal').textContent = state.assets.length;
-    $('statOperational').textContent = state.assets.filter(function (a) { return a.status === 'operational'; }).length;
-    $('statMaintenance').textContent = state.assets.filter(function (a) { return a.status === 'maintenance' || a.status === 'degraded'; }).length;
-    $('statIssues').textContent = state.issues.filter(function (i) { return i.status === 'open'; }).length;
+    var pool = state.allAssets.length ? state.allAssets : state.assets;
+    $('statTotal').textContent = pool.length;
+    $('statOperational').textContent = pool.filter(function (a) { return a.status === 'operational'; }).length;
+    $('statMaintenance').textContent = pool.filter(function (a) { return a.status === 'maintenance' || a.status === 'degraded'; }).length;
+    $('statIssues').textContent = state.openIssueCount;
   }
 
   function esc(s) { return String(s === null || s === undefined ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
@@ -198,6 +209,7 @@
       $('assetDialog').close();
       alert(state.editingId ? 'Asset updated.' : 'Asset created.', 'ok');
       await refreshAssets();
+      await refreshSummaryStats();
     } catch (e) {
       err.textContent = apiErrorMessage(e);
       err.hidden = false;
@@ -217,7 +229,7 @@
       state.issues = res.data || [];
       list.innerHTML = '';
       $('issueState').hidden = true;
-      renderStats();
+      $('issueState').textContent = '';
       if (!state.issues.length) {
         $('issueState').hidden = false;
         $('issueState').textContent = 'No issues match this filter.';
@@ -231,8 +243,10 @@
           var o = document.createElement('option'); o.value = s; o.textContent = s; if (i.status === s) o.selected = true; sel.appendChild(o);
         });
         sel.addEventListener('change', async function () {
-          try { await api.updateIssueStatus(i.id, sel.value); i.status = sel.value; renderStats(); alert('Issue #' + i.id + ' → ' + sel.value, 'ok'); }
+          sel.disabled = true;
+          try { await api.updateIssueStatus(i.id, sel.value); i.status = sel.value; await refreshSummaryStats(); alert('Issue #' + i.id + ' → ' + sel.value, 'ok'); }
           catch (e) { alert('Could not update issue: ' + apiErrorMessage(e), 'error'); sel.value = i.status; }
+          finally { sel.disabled = false; }
         });
         li.innerHTML = '<div class="issue-meta"><span class="badge ' + esc(i.status) + '">' + esc(i.status) + '</span>' +
           '<strong>#' + i.id + ' · ' + esc(i.assetId) + '</strong><span>' + esc(i.reportedAt ? String(i.reportedAt).slice(0, 10) : '') + '</span>' +
@@ -258,7 +272,7 @@
     $('newAssetBtn').addEventListener('click', function () { openForm(null); });
     $('assetForm').addEventListener('submit', submitForm);
     $('confirmDelete').addEventListener('click', async function () {
-      try { await api.deleteAsset(state.deleteId); $('confirmDialog').close(); alert('Asset deleted.', 'ok'); await refreshAssets(); }
+      try { await api.deleteAsset(state.deleteId); $('confirmDialog').close(); alert('Asset deleted.', 'ok'); await refreshAssets(); await refreshSummaryStats(); }
       catch (e) { alert('Delete failed: ' + apiErrorMessage(e), 'error'); }
     });
     $('apiBase').addEventListener('change', function (e) {
@@ -277,9 +291,10 @@
       if (document.hidden) return;
       refreshAssets(true);
       refreshIssues(true);
+      refreshSummaryStats();
     }, 10000);
     document.addEventListener('visibilitychange', function () {
-      if (!document.hidden) { refreshAssets(true); refreshIssues(true); }
+      if (!document.hidden) { refreshAssets(true); refreshIssues(true); refreshSummaryStats(); }
     });
   });
 })();

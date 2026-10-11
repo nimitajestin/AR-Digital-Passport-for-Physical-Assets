@@ -1,12 +1,21 @@
 /* Thin fetch wrapper over docs/API.md. No mock data — all calls hit the real backend. */
 (function () {
   function base() { return (window.DASHBOARD_CONFIG && window.DASHBOARD_CONFIG.API_BASE_URL) || 'http://localhost:3000/api'; }
+  var FETCH_TIMEOUT_MS = 12000;
+
   async function req(path, options) {
     var res;
+    var controller = new AbortController();
+    var timer = setTimeout(function () { controller.abort(); }, FETCH_TIMEOUT_MS);
     try {
-      res = await fetch(base() + path, options);
+      res = await fetch(base() + path, Object.assign({}, options, { signal: controller.signal }));
     } catch (e) {
+      if (e && (e.name === 'AbortError' || e.code === 20)) {
+        throw new Error('The API did not respond within 12 seconds. Check that the backend is running.');
+      }
       throw new Error('Cannot reach API at ' + base() + '. Is the backend running?');
+    } finally {
+      clearTimeout(timer);
     }
     if (res.status === 204) return null;
     var body = null;

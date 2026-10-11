@@ -8,30 +8,53 @@ No build step, no bundler, works from any static host.
 frontend/dashboard/
   index.html      # layout: stats cards, asset table + filters, issues, 3 dialogs
   css/dashboard.css
-  js/config.js    # API base resolution (query ?api= > localStorage > default)
-  js/api.js       # fetch wrapper over docs/API.md (no mocks)
+  js/config.js    # API base resolution (?api= > localStorage > same-origin /api > local default)
+  js/api.js       # fetch wrapper over docs/API.md (no mocks; ~12s timeout)
   js/app.js       # search/filter/table, CRUD dialogs, issue status updates
 ```
 
 ## Setup
-Serve the repo root statically and open the dashboard (backend must be running):
+
+The backend requires a real PostgreSQL `DATABASE_URL` (or the test-only
+`USE_MEMORY_DB=true` hatch). It does **not** start in a silent memory mode.
+
+Preferred (backend also serves the dashboard at `/dashboard/`):
+
 ```bash
-# terminal 1 — backend (zero-config memory mode)
-cd backend && npm install && npm start        # http://localhost:3000
-# terminal 2 — static frontend
-cd .. && python -m http.server 8000
-# open http://localhost:8000/frontend/dashboard/?api=http://localhost:3000/api
+# from repo root — Docker Desktop must be running
+cp .env.example .env
+docker compose up -d db
+docker compose --profile tools run --rm db-seed   # once; do not re-run blindly
+cd backend && npm install && npm start            # http://localhost:3000
 ```
+
+Then open:
+
+```text
+http://localhost:3000/dashboard/
+```
+
+Same-origin `/api` works. If you serve the repo from another static port:
+
+```bash
+python -m http.server 8000
+# http://localhost:8000/frontend/dashboard/?api=http://localhost:3000/api
+```
+
 The API URL box in the header persists to `localStorage(ar_passport_api_base)`.
 
 ## Environment variables
 | var | used by | default |
 |---|---|---|
-| `VITE_API_BASE_URL` | deployment replacement for the default base | `http://localhost:3000/api` |
+| `VITE_API_BASE_URL` | optional deploy-time string replace (there is no Vite build) | `http://localhost:3000/api` |
 
-No production URL is hard-coded: `js/config.js` default is the local URL above,
-overridable at runtime via `?api=` or the header input. When deploying, either
-rewrite the default or link with `?api=https://<backend>/api`.
+No production URL is hard-coded. Runtime resolution (`js/config.js`):
+`?api=` → saved localStorage → same-origin `/api` on a non-localhost host →
+`http://localhost:3000/api` for local laptop splits.
+
+When the Express app serves `/dashboard/`, the default localhost API URL is
+correct. On a phone hotspot (`http://<lan-ip>:3000/dashboard/`) same-origin
+`/api` is used.
 
 ## API dependency (all from docs/API.md — never invented)
 `GET /api/assets` · `GET /api/assets/:id` · `POST /api/assets` ·
@@ -41,11 +64,16 @@ rewrite the default or link with `?api=https://<backend>/api`.
 
 Response formats are consumed exactly as documented. If the backend returns
 `{ error: { code, message } }` the dashboard shows `message` (never raw stacks).
+Fetches abort after about 12 seconds with a readable timeout.
 
-Live updates: the dashboard re-fetches assets + issues silently every 10 seconds
-(skipped while the tab is hidden) and on every tab-focus, so an issue reported
-from the AR scanner appears without a manual refresh. The header shows
-"live, updated HH:MM:SS". Every render comes from the backend — no mock data.
+Live updates: the dashboard re-fetches assets, issues, and **unfiltered**
+summary cards silently every 10 seconds (skipped while the tab is hidden) and
+on every tab-focus, so an issue reported from the AR scanner appears without a
+manual refresh. The assets panel shows "live, updated HH:MM:SS". Every render
+comes from the backend — no mock data.
+
+Summary cards always reflect the full catalog (total / operational /
+maintenance+degraded / open issues), not the current table or issue filter.
 
 ## Features → requirements
 Summary cards · asset table (ID/name/category/location/status/dates/actions) ·
@@ -57,15 +85,16 @@ semantic HTML, labelled controls, keyboard-accessible `<dialog>`s ·
 loading/empty/error states · delete confirmation dialog.
 
 ## Build command
-None (static). Optional smoke check: `python -m http.server` + open the page.
+None (static). Smoke check: start the backend, open `/dashboard/`.
 
 ## Deployment
 Any static host (Vercel/Netlify/GitHub Pages): publish `frontend/dashboard/`
 (or repo root) and point it at the backend with `?api=` or the saved API base.
-Requires HTTPS backend for camera-adjacent flows; dashboard itself needs no camera.
+The dashboard itself needs no camera. Exact host steps belong in `docs/DEPLOYMENT.md`
+(Dev 4).
 
 ## Known limitations
 - No auth — anyone with the URL can edit (matches backend v1).
 - No pagination UI (fetches up to 100 rows per list).
 - No offline support; API failures show a friendly banner, not raw errors.
-- `VITE_API_BASE_URL` is honoured at deploy time only; runtime override is `?api=`.
+- `VITE_API_BASE_URL` is a deploy-time replace only; runtime override is `?api=`.
