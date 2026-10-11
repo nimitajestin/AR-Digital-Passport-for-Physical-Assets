@@ -13,12 +13,21 @@
     return "Request failed (" + status + ")";
   }
 
+  var FETCH_TIMEOUT_MS = 12000;
+
   async function req(path, options) {
     var res;
+    var controller = new AbortController();
+    var timer = setTimeout(function () { controller.abort(); }, FETCH_TIMEOUT_MS);
     try {
-      res = await fetch(getApiUrl(path), options);
+      res = await fetch(getApiUrl(path), Object.assign({}, options, { signal: controller.signal }));
     } catch (networkError) {
+      if (networkError && (networkError.name === "AbortError" || networkError.code === 20)) {
+        throw new Error("The API did not respond within 12 seconds. Check that the backend is running and reachable.");
+      }
       throw new Error("Cannot reach the API. Check the connection and that the backend is running.");
+    } finally {
+      clearTimeout(timer);
     }
     if (res.status === 204) return null;
     var body = null;

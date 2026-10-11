@@ -9,7 +9,8 @@
   var state = {
     currentTargetIndex: 0,
     currentAsset: null,
-    isTrackReady: false
+    isTrackReady: false,
+    mindFileMissing: false
   };
 
   function getCurrentTarget() {
@@ -25,9 +26,10 @@
 
     try {
       // Marker lookup returns { markerId, assetId, asset } per docs/API.md.
-      // Prefer the inline asset, fall back to GET /api/assets/:id.
+      // Always follow with GET /api/assets/:id so the panel uses the bare passport.
       var lookup = await api.getAssetByMarker(target.markerId);
-      var asset = (lookup && lookup.asset) ? lookup.asset : await api.getAsset(lookup.assetId);
+      var assetId = lookup && lookup.assetId;
+      var asset = await api.getAsset(assetId);
       state.currentAsset = asset;
       ui.renderAsset(asset);
       ui.setStatusBanner("detected", "Asset " + asset.name + " ready");
@@ -153,13 +155,47 @@
     if (!scene) return;
     scene.addEventListener("arReady", function () {
       state.isTrackReady = true;
-      ui.showScanState("Scan an asset");
       initializeTargetButtons();
-      loadAssetForTarget(state.currentTargetIndex);
+      if (state.mindFileMissing) {
+        ui.showErrorState("Marker target file missing: " + config.mindarTargetPath + ". Compile it with the MindAR Image Targets Compiler into frontend/ar/assets/targets/targets.mind (see docs/AR_DEVELOPER.md).");
+      } else {
+        ui.showScanState("Scan an asset");
+      }
     });
     scene.addEventListener("arError", function () {
       state.isTrackReady = false;
       ui.showErrorState("Camera or tracker failed. Allow camera access and use HTTPS.");
+    });
+  }
+
+  function attachTargetEvents() {
+    config.targetDefinitions.forEach(function (target) {
+      var entity = document.querySelector("#target-" + target.index);
+      if (!entity) return;
+      entity.addEventListener("targetFound", function () {
+        state.currentTargetIndex = target.index;
+        initializeTargetButtons();
+        loadAssetForTarget(target.index);
+      });
+      entity.addEventListener("targetLost", function () {
+        if (state.currentTargetIndex !== target.index) return;
+        closePanel();
+      });
+    });
+  }
+
+  function checkMindFile() {
+    if (!config.mindarTargetPath) return;
+    var missingMsg = "Marker target file missing: " + config.mindarTargetPath + ". Compile it with the MindAR Image Targets Compiler into frontend/ar/assets/targets/targets.mind (see docs/AR_DEVELOPER.md).";
+    fetch(config.mindarTargetPath, { method: "HEAD" }).then(function (res) {
+      if (res.ok) return;
+      state.mindFileMissing = true;
+      console.warn(missingMsg);
+      ui.showErrorState(missingMsg);
+    }).catch(function () {
+      state.mindFileMissing = true;
+      console.warn(missingMsg);
+      ui.showErrorState(missingMsg);
     });
   }
 
@@ -169,13 +205,8 @@
     initializeTargetButtons();
     bindActions();
     attachDetectorState();
-    if (config.mindarTargetPath) {
-      fetch(config.mindarTargetPath, { method: "HEAD" }).then(function (res) {
-        if (!res.ok) console.warn("Marker target file missing: " + config.mindarTargetPath + ". Compile it with the MindAR Image Targets Compiler into frontend/ar/assets/targets/targets.mind (see docs/AR_DEVELOPER.md).");
-      }).catch(function () {
-        console.warn("Marker target file missing: " + config.mindarTargetPath + ". See docs/AR_DEVELOPER.md for how to compile it.");
-      });
-    }
+    attachTargetEvents();
+    checkMindFile();
     ui.showScanState("Scan an asset");
   }
 

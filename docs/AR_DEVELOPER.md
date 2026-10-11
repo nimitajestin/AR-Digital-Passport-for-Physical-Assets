@@ -2,12 +2,10 @@
 
 ## Project Structure
 
-The project is organized into a simple frontend-first structure so future backend and database developers can work independently:
-
-- `frontend/ar/` contains the AR interface and client-side logic
-- `backend/` is reserved for future REST API development
-- `database/` is reserved for schema and persistence work
-- `docs/` contains implementation notes for developers
+- `frontend/ar/` — AR / WebAR scanner (Dev 1)
+- `backend/` — REST API (Dev 2); also serves the AR page at `/ar/`
+- `database/` — schema and seed SQL
+- `docs/` — implementation notes for developers
 
 ## Dev 1 Responsibility
 
@@ -15,9 +13,11 @@ Developer 1 is responsible for the AR/WebAR mobile foundation, including:
 
 - AR page layout and user experience
 - A-Frame + MindAR setup
-- marker target configuration
+- marker target configuration (`targetDefinitions` in `js/config.js`)
 - UI states for loading, scanning, and error handling
-- placeholder integration points for future REST API calls
+- live REST lookups: marker detect → `GET /api/assets/marker/:markerId` → `GET /api/assets/:id` → passport panel
+
+The three marker buttons remain a fallback when the camera cannot detect a printed image.
 
 ## AR Technology Stack
 
@@ -27,11 +27,11 @@ Developer 1 is responsible for the AR/WebAR mobile foundation, including:
 
 ## How the AR Page Works
 
-The AR module is a static front-end page that loads a MindAR image-tracking scene. The application is designed around the project flow:
+Physical Asset → Image Marker → MindAR Target (`#target-0` … `#target-2`) → `targetIndex` → `markerId` → REST API → Asset passport panel
 
-Physical Asset → Image Marker → MindAR Target → Asset/Marker ID → REST API → Asset Information → AR Information Panel
+MindAR fires `targetFound` / `targetLost` on those entities. The page does **not** auto-load an asset when the tracker becomes ready. Losing the current target clears the panel and shows “Scan an asset”.
 
-The page expects a marker target file in the `frontend/ar/assets/targets/` directory. Once the marker is detected, the app can look up an asset ID and show a digital passport panel with asset details.
+The compiled marker file is expected at `frontend/ar/assets/targets/targets.mind`. If a `HEAD` of that path fails, the scan banner shows the missing-file message (not only `console.warn`).
 
 ## Where the MindAR Target File Goes
 
@@ -41,7 +41,7 @@ Compile your marker images into ONE file named exactly:
 frontend/ar/assets/targets/targets.mind
 ```
 
-(`*.mind` is git-ignored — each machine/phone demo keeps its own compiled file.)
+`*.mind` is **git-ignored**. Each machine or phone demo keeps its own compiled file — do not commit `targets.mind`.
 
 ## How to Create Markers for Your Assets (step by step)
 
@@ -73,35 +73,47 @@ the `.mind` format with MindAR's official **Image Targets Compiler**
 
 Why the order matters: the compiler assigns `targetIndex` by upload order,
 and the app maps `targetIndex → markerId` in `targetDefinitions`, then
-`markerId → asset` via `GET /api/assets/marker/:markerId`. Wrong order =
-right detection, wrong asset.
+`markerId → asset` via `GET /api/assets/marker/:markerId` followed by
+`GET /api/assets/:id`. Wrong order = right detection, wrong asset.
 
-## Future API Connection
+## API Connection
 
 The frontend talks to the live backend only — there is no fallback or demo
 data. If the API is unreachable, the passport panel shows the real error
-instead of invented values.
+instead of invented values. Fetches in `frontend/ar/js/api.js` abort after
+about 12 seconds with a readable timeout message.
 
-Calls (isolated in `frontend/ar/js/api.js`):
+Calls used by the AR page (isolated in `frontend/ar/js/api.js`):
 
-- `GET /api/assets/`
-- `GET /api/assets/marker/`
+- `GET /api/assets/marker/:markerId` — returns `{ markerId, assetId, asset }`
+- `GET /api/assets/:id` — bare passport object (always called after marker lookup)
 - `GET /api/assets/:id/maintenance`
 - `POST /api/issues`
 
-## How Another Developer Can Run the Module
+## How to run locally
 
 From the project root:
 
 ```bash
-cd "c:\Users\aaroh\OneDrive\Desktop\ARVR"
-python -m http.server 8000
+cd backend
+npm install
+npm start
 ```
 
 Then open:
 
 ```text
-http://localhost:8000/frontend/ar/
+http://localhost:3000/ar/
 ```
+
+The Express app serves the AR static files at `/ar/` and the API at `/api`, so same-origin `/api` works without a query param. On a laptop static server on another port, pass `?api=http://localhost:3000/api`.
+
+## HTTPS, camera, and hotspot limits
+
+- The camera API requires a **secure context**: `https://` or `http://localhost`.
+- Opening `http://<hotspot-ip>:3000/ar/` on a phone usually **blocks** the camera. Workarounds: serve over HTTPS, or set Chrome’s “Insecure origins treated as secure” flag for that origin (demo only).
+- Allow camera permission when prompted. Denial shows an error in the scan banner (`arError`).
+- Laptop and phone must share a network (phone hotspot is typical). Run `npm run phone` in `backend/` to print the LAN URLs.
+- Without `targets.mind` on the machine serving the page, detection cannot start; the scan banner reports the missing file.
 
 The page is intentionally lightweight and designed to be expanded by the next development stages.
