@@ -1,0 +1,60 @@
+AR DIGITAL PASSPORT — REMAINING STEPS
+========================================
+Updated: 2026-10-11. Backend + dashboard + AR app are done and live on
+Supabase. Everything below is demo readiness, team coordination, and submission.
+
+A. MARKERS & DEMO ASSETS (must-do)
+----------------------------------
+[ ] 1. Compile targets.mind — https://hiukim.github.io/mind-ar-js-doc/tools/compile
+       Drop 3 images IN THIS ORDER: projector, purifier, printer.
+       Rename download to targets.mind -> frontend/ar/assets/targets/
+       (Full guide: docs/AR_DEVELOPER.md. *.mind is git-ignored by design.)
+[ ] 2. Print the same 3 images, A5 or larger, matte paper (no glossy/tape glare).
+[x] 3. Lab PC 26 (CL-412) is seeded as AST-007 (dashboard story, no AR marker).
+[x] 4. Marker set locked: 3 seed AR markers (projector, purifier, printer). Lab PC is dashboard-only.
+
+B. PHONE + DEMO-DAY PREP (hotspot only — no WiFi, no tunnels)
+------------------------------------------------------------------
+[ ] 5. Laptop: firewall rule, admin PowerShell (once, persists):
+       New-NetFirewallRule -DisplayName "AR Passport" -Direction Inbound -Protocol TCP -LocalPort 3000 -Action Allow
+[ ] 6. Phone Chrome: chrome://flags -> "Insecure origins treated as secure" ->
+       add http://<laptop-ip>:3000 (get the IP from `npm run phone`) ->
+       Relaunch. (Required: camera is blocked on plain http without this.)
+[ ] 7. Full rehearsal on the phone over hotspot: scan marker -> passport ->
+       maintenance -> report issue -> dashboard shows it (~10s) -> set
+       in_progress. Fix anything that wobbles NOW, not on stage.
+[ ] 8. Record a backup demo video during rehearsal. If live AR/camera fails on
+       stage, play the video and continue with the dashboard half live.
+[ ] 9. Demo-day checklist: laptop charged, phone hotspot ON, laptop joined to
+       the hotspot (confirm IP via `npm run phone` starts with 192.168.43.),
+       Cloudflare WARP disconnected, `npm start` running, /health shows
+       "postgres" + 7 assets, hotspot URL open on phone, printed markers in bag.
+
+C. TEAM & REPO (must-do)
+------------------------
+[ ] 11. Push latest source to existing repo
+        https://github.com/nimitajestin/AR-Digital-Passport-for-Physical-Assets.git
+        (you commit locally — see overlay folder AR-Digital-Passport-github-clone).
+[ ] 12. Tell the teammate who built the old Supabase schema their tables were
+        replaced (per your call). A backup with their data exists locally;
+        offer it back if they need anything.
+[ ] 13. Reset the Supabase DB password (Settings -> Database) — it passed
+        through chat. Then update ONLY the password part of DATABASE_URL in
+        your local .env (git-ignored, never committed).
+[ ] 14. Share targets.mind + printed markers with the team (pen drive / shared
+        drive) — it is git-ignored and will not arrive via git push.
+
+D. PRE-DEMO VERIFICATION (day before)
+-------------------------------------
+[ ] 15. Fresh-eyes pass: GET /health (assets = 7), issues table back to the 4
+        seed rows (delete rehearsal issues via Supabase Table Editor).
+[x] 16. backend npm test: 15/15 passed (2026-10-12).
+        Still do live: node tests/integration-check.js --base http://localhost:3000
+        (expect 14/14) with the backend on Postgres/Supabase.
+
+E. SUBMISSION EXTRAS (confirm with team)
+----------------------------------------
+[ ] 17. Check the CA-III rubric: slides, report, or viva Q&A needed beyond the
+        repo? README + docs/ cover architecture/setup/demo/team/limitations.
+[x] 18. README team section names Dev 1 Aarohi / Dev 2 Nimita / Dev 3 Archisha /
+        Dev 4 Rudra. Add the same names on slides if the rubric requires them.

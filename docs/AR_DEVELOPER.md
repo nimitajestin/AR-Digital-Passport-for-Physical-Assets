@@ -35,24 +35,59 @@ The page expects a marker target file in the `frontend/ar/assets/targets/` direc
 
 ## Where the MindAR Target File Goes
 
-Place the real `.mind` target file in:
+Compile your marker images into ONE file named exactly:
 
 ```text
-frontend/ar/assets/targets/
+frontend/ar/assets/targets/targets.mind
 ```
 
-Do not commit a fake target file. Keep the real target artifact local or add it later when the backend/AR team has generated it.
+(`*.mind` is git-ignored — each machine/phone demo keeps its own compiled file.)
+
+## How to Create Markers for Your Assets (step by step)
+
+MindAR does not scan raw JPG/PNG files — images must first be compiled into
+the `.mind` format with MindAR's official **Image Targets Compiler**
+(in-browser, nothing to install):
+`https://hiukim.github.io/mind-ar-js-doc/tools/compile`
+
+1. **Pick one marker image per asset (3 for the demo).** Good markers are
+   high-contrast, asymmetric, detail-rich images (photos of the asset, a
+   detailed poster, a patterned sticker). Avoid: plain colours, large blank
+   areas, repetitive grids, thin lines only, rotationally symmetric logos.
+   Export each as PNG/JPG (the repo's `frontend/ar/assets/markers/*.svg`
+   files are print-friendly symbols — for best tracking, use richer images).
+2. **Compile:** open the compiler page → drop the images **in this exact
+   order** → Start → download the `.mind` file:
+   1. projector image (becomes targetIndex **0** → `projector-marker` → AST-001)
+   2. purifier image (becomes targetIndex **1** → `purifier-marker` → AST-002)
+   3. printer image (becomes targetIndex **2** → `printer-marker` → AST-003)
+3. **Place it:** rename the download to `targets.mind` and put it in
+   `frontend/ar/assets/targets/`. Both `index.html` (`imageTargetSrc`) and
+   `js/config.js` (`mindarTargetPath`) already point there — no code change.
+4. **Print the SAME images** (A5 or larger, matte paper, good lighting).
+   Point the phone camera so a marker fills most of the view.
+5. **Add a 4th+ asset later:** recompile with all images (order preserved for
+   old ones), add its `{ index, markerId, label }` to `targetDefinitions` in
+   `js/config.js`, its marker row in the DB, and raise `maxTrack` if you want
+   simultaneous detection.
+
+Why the order matters: the compiler assigns `targetIndex` by upload order,
+and the app maps `targetIndex → markerId` in `targetDefinitions`, then
+`markerId → asset` via `GET /api/assets/marker/:markerId`. Wrong order =
+right detection, wrong asset.
 
 ## Future API Connection
 
-The frontend is prepared for future calls to:
+The frontend talks to the live backend only — there is no fallback or demo
+data. If the API is unreachable, the passport panel shows the real error
+instead of invented values.
+
+Calls (isolated in `frontend/ar/js/api.js`):
 
 - `GET /api/assets/`
 - `GET /api/assets/marker/`
 - `GET /api/assets/:id/maintenance`
 - `POST /api/issues`
-
-The API layer is isolated in `frontend/ar/js/api.js` so backend integration can happen later without rewriting the AR experience.
 
 ## How Another Developer Can Run the Module
 

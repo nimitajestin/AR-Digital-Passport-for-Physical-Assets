@@ -1,109 +1,59 @@
+/* Real API layer — no fallback data, no simulation.
+ * Every method hits the live backend (docs/API.md). On failure the promise
+ * REJECTS and the UI shows the real error. Nothing is invented client-side.
+ */
 (function () {
-  const config = window.ARDigitalPassportConfig;
-  const fallbackAsset = config.assets[0];
-
-  function normalizeAsset(asset) {
-    return {
-      ...fallbackAsset,
-      ...asset,
-      status: (asset && asset.status) ? asset.status : fallbackAsset.status,
-      lastMaintenance: asset && asset.lastMaintenance ? asset.lastMaintenance : fallbackAsset.lastMaintenance,
-      nextMaintenance: asset && asset.nextMaintenance ? asset.nextMaintenance : fallbackAsset.nextMaintenance
-    };
-  }
-
   function getApiUrl(path) {
-    const base = (config.apiBaseUrl || "/api").replace(/\/$/, "");
-    return `${base}${path}`;
+    var base = ((window.ARDigitalPassportConfig && window.ARDigitalPassportConfig.apiBaseUrl) || "/api").replace(/\/$/, "");
+    return base + path;
   }
 
-  const API = {
+  function extractErrorMessage(body, status) {
+    if (body && body.error && body.error.message) return body.error.message;
+    return "Request failed (" + status + ")";
+  }
+
+  async function req(path, options) {
+    var res;
+    try {
+      res = await fetch(getApiUrl(path), options);
+    } catch (networkError) {
+      throw new Error("Cannot reach the API. Check the connection and that the backend is running.");
+    }
+    if (res.status === 204) return null;
+    var body = null;
+    try { body = await res.json(); } catch (parseError) { body = null; }
+    if (!res.ok) throw new Error(extractErrorMessage(body, res.status));
+    return body;
+  }
+
+  var API = {
+    // Returns { markerId, assetId, asset } — contract frozen in docs/API.md.
     async getAssetByMarker(markerId) {
-      const safeMarkerId = markerId || fallbackAsset.markerId;
-      const url = getApiUrl(`/assets/marker/${encodeURIComponent(safeMarkerId)}`);
-
-      try {
-        const response = await fetch(url, { method: "GET" });
-        if (!response.ok) {
-          throw new Error(`Marker lookup failed: ${response.status}`);
-        }
-
-        const data = await response.json();
-        const assetId = data && data.assetId ? data.assetId : fallbackAsset.id;
-        return this.getAsset(assetId);
-      } catch (error) {
-        console.warn("Marker lookup unavailable. Using demo asset fallback.", error);
-        const foundAsset = config.assets.find((item) => item.markerId === safeMarkerId) || fallbackAsset;
-        return normalizeAsset(foundAsset);
-      }
+      if (!markerId) throw new Error("No marker ID was detected.");
+      return req("/assets/marker/" + encodeURIComponent(markerId), { method: "GET" });
     },
 
+    // Returns the bare asset passport object.
     async getAsset(assetId) {
-      const safeId = assetId || fallbackAsset.id;
-      const url = getApiUrl(`/assets/${encodeURIComponent(safeId)}`);
-
-      try {
-        const response = await fetch(url, { method: "GET" });
-        if (!response.ok) {
-          throw new Error(`Asset lookup failed: ${response.status}`);
-        }
-
-        const data = await response.json();
-        return normalizeAsset(data);
-      } catch (error) {
-        console.warn("Asset API unavailable. Using fallback demo data.", error);
-        const foundAsset = config.assets.find((item) => item.id === safeId) || fallbackAsset;
-        return normalizeAsset(foundAsset);
-      }
+      if (!assetId) throw new Error("No asset ID was provided.");
+      return req("/assets/" + encodeURIComponent(assetId), { method: "GET" });
     },
 
+    // Returns an array of maintenance records.
     async getMaintenanceSchedule(assetId) {
-      const safeId = assetId || fallbackAsset.id;
-      const url = getApiUrl(`/assets/${encodeURIComponent(safeId)}/maintenance`);
-
-      try {
-        const response = await fetch(url, { method: "GET" });
-        if (!response.ok) {
-          throw new Error(`Maintenance request failed: ${response.status}`);
-        }
-
-        return await response.json();
-      } catch (error) {
-        console.warn("Maintenance API unavailable.", error);
-        return [
-          { date: fallbackAsset.lastMaintenance, note: "Last scheduled maintenance" },
-          { date: fallbackAsset.nextMaintenance, note: "Next planned service" }
-        ];
-      }
+      if (!assetId) throw new Error("No asset ID was provided.");
+      return req("/assets/" + encodeURIComponent(assetId) + "/maintenance", { method: "GET" });
     },
 
+    // Creates a real issue row. Resolves with the created issue.
     async submitIssue(issueData) {
-      const url = getApiUrl("/issues");
-
-      try {
-        const response = await fetch(url, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify(issueData)
-        });
-
-        if (!response.ok) {
-          return {
-            ok: false,
-            message: "Issue submission is waiting on backend integration."
-          };
-        }
-
-        return await response.json();
-      } catch (error) {
-        console.warn("Issue submission cannot reach backend yet.", error);
-        return {
-          ok: false,
-          message: "Issue report queued for backend integration."
-        };
-      }
+      var res = await req("/issues", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(issueData)
+      });
+      return res;
     }
   };
 

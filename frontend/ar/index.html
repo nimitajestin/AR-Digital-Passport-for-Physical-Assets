@@ -30,7 +30,7 @@
           <div class="scanner-frame">
             <a-scene
               embedded
-              mindar-image="imageTargetSrc: ./assets/targets/placeholder-target.mind; maxTrack: 3; warmupTolerance: 5;"
+              mindar-image="imageTargetSrc: ./assets/targets/targets.mind; maxTrack: 3; warmupTolerance: 5;"
               color-space="sRGB"
               renderer="colorManagement: true"
               vr-mode-ui="enabled: false"
@@ -122,6 +122,41 @@
         </aside>
       </main>
     </div>
+
+    <dialog id="detailDialog" aria-labelledby="detailDialogTitle">
+      <h2 id="detailDialogTitle">Asset details</h2>
+      <div id="detailDialogBody"></div>
+      <div class="dialog-actions">
+        <button class="secondary-button" type="button" data-close-dialog="detailDialog">Close</button>
+      </div>
+    </dialog>
+
+    <dialog id="maintenanceDialog" aria-labelledby="maintenanceDialogTitle">
+      <h2 id="maintenanceDialogTitle">Maintenance history</h2>
+      <div id="maintenanceDialogBody"></div>
+      <div class="dialog-actions">
+        <button class="secondary-button" type="button" data-close-dialog="maintenanceDialog">Close</button>
+      </div>
+    </dialog>
+
+    <dialog id="issueDialog" aria-labelledby="issueDialogTitle">
+      <h2 id="issueDialogTitle">Report an issue</h2>
+      <p class="dialog-subtitle" id="issueAssetLabel"></p>
+      <div id="issueDialogBody"></div>
+      <form id="issueForm" novalidate>
+        <label class="ar-field">Issue description *
+          <textarea name="description" rows="4" required minlength="5" placeholder="Describe what is wrong with the asset..."></textarea>
+        </label>
+        <label class="ar-field">Your name (optional)
+          <input name="reportedBy" type="text" maxlength="128" placeholder="e.g. Lab assistant" />
+        </label>
+        <p class="form-error" id="issueFormError" role="alert" hidden></p>
+        <div class="dialog-actions">
+          <button class="secondary-button" type="button" data-close-dialog="issueDialog">Cancel</button>
+          <button class="primary-button" type="submit" id="issueSubmit">Submit issue</button>
+        </div>
+      </form>
+    </dialog>
 
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mindar-image-aframe@1.2.0/dist/mindar-image-aframe.prod.js"></script>

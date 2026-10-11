@@ -1,33 +1,39 @@
+/* AR controller — marker detection → live API → passport panel.
+ * No demo data: without a reachable backend every lookup shows a real error.
+ */
 (function () {
-  const config = window.ARDigitalPassportConfig;
-  const ui = window.ARDigitalPassportUI;
-  const api = window.ARDigitalPassportAPI;
+  var config = window.ARDigitalPassportConfig;
+  var ui = window.ARDigitalPassportUI;
+  var api = window.ARDigitalPassportAPI;
 
-  const state = {
+  var state = {
     currentTargetIndex: 0,
     currentAsset: null,
     isTrackReady: false
   };
 
   function getCurrentTarget() {
-    return config.targetDefinitions.find((item) => item.index === state.currentTargetIndex) || config.targetDefinitions[0];
+    return config.targetDefinitions.find(function (item) { return item.index === state.currentTargetIndex; }) || config.targetDefinitions[0];
   }
 
   async function loadAssetForTarget(index) {
-    const target = config.targetDefinitions[index] || config.targetDefinitions[0];
+    var target = config.targetDefinitions[index] || config.targetDefinitions[0];
     state.currentTargetIndex = index;
+    state.currentAsset = null;
 
-    ui.showLoadingState(`Loading asset ${target.label}...`);
+    ui.showLoadingState("Loading asset " + target.label + "...");
 
     try {
-      const asset = await api.getAssetByMarker(target.markerId);
+      // Marker lookup returns { markerId, assetId, asset } per docs/API.md.
+      // Prefer the inline asset, fall back to GET /api/assets/:id.
+      var lookup = await api.getAssetByMarker(target.markerId);
+      var asset = (lookup && lookup.asset) ? lookup.asset : await api.getAsset(lookup.assetId);
       state.currentAsset = asset;
       ui.renderAsset(asset);
-      ui.setStatusBanner("detected", `Asset ${asset.name} ready`);
+      ui.setStatusBanner("detected", "Asset " + asset.name + " ready");
       return asset;
     } catch (error) {
-      console.error("Failed to load asset payload", error);
-      ui.showErrorState("Asset data could not be loaded.");
+      ui.showErrorState(error.message || "Asset data could not be loaded.");
       return null;
     }
   }
@@ -37,65 +43,147 @@
   }
 
   function switchTarget(nextIndex) {
-    if (!config.targetDefinitions[nextIndex]) {
-      return;
-    }
-
+    if (!config.targetDefinitions[nextIndex]) return;
     state.currentTargetIndex = nextIndex;
     initializeTargetButtons();
     loadAssetForTarget(nextIndex);
   }
 
-  function attachDetectorState() {
-    const scene = document.querySelector("a-scene");
-    if (!scene) {
+  async function showMaintenance() {
+    if (!state.currentAsset) {
+      ui.showDialogMessage("maintenanceDialogBody", "Scan an asset first — no asset is loaded.");
+      ui.openDialog("maintenanceDialog");
       return;
     }
+    ui.showDialogMessage("maintenanceDialogBody", "Loading maintenance history...");
+    ui.openDialog("maintenanceDialog");
+    try {
+      var records = await api.getMaintenanceSchedule(state.currentAsset.id);
+      ui.renderMaintenance("maintenanceDialogBody", state.currentAsset, records);
+    } catch (error) {
+      ui.showDialogMessage("maintenanceDialogBody", "Could not load maintenance: " + error.message);
+    }
+  }
 
-    scene.addEventListener("arReady", () => {
+  function showDetails() {
+    if (!state.currentAsset) {
+      ui.showDialogMessage("detailDialogBody", "Scan an asset first — no asset is loaded.");
+      ui.openDialog("detailDialog");
+      return;
+    }
+    ui.renderAssetDetails("detailDialogBody", state.currentAsset);
+    ui.openDialog("detailDialog");
+  }
+
+  function showIssueForm() {
+    if (!state.currentAsset) {
+      ui.showDialogMessage("issueDialogBody", "Scan an asset first — no asset is loaded.");
+      return;
+    }
+    ui.resetIssueForm(state.currentAsset);
+    ui.openDialog("issueDialog");
+  }
+
+  async function submitIssue(event) {
+    event.preventDefault();
+    if (!state.currentAsset) return;
+    var form = document.getElementById("issueForm");
+    var description = form.description.value.trim();
+    var errorEl = document.getElementById("issueFormError");
+    if (description.length < 5) {
+      errorEl.textContent = "Please describe the issue (at least 5 characters).";
+      errorEl.hidden = false;
+      return;
+    }
+    errorEl.hidden = true;
+    var submitBtn = document.getElementById("issueSubmit");
+    submitBtn.disabled = true;
+    try {
+      var created = await api.submitIssue({
+        assetId: state.currentAsset.id,
+        description: description,
+        reportedBy: form.reportedBy.value.trim() || "AR user"
+      });
+      ui.showDialogMessage("issueDialogBody", "Issue #" + created.id + " reported for " + state.currentAsset.id + ". An admin will review it in the dashboard.");
+      form.reset();
+    } catch (error) {
+      errorEl.textContent = error.message || "Issue could not be submitted.";
+      errorEl.hidden = false;
+    } finally {
+      submitBtn.disabled = false;
+    }
+  }
+
+  function closePanel() {
+    state.currentAsset = null;
+    ui.clearAsset();
+    ui.showScanState("Scan an asset");
+  }
+
+  function bindActions() {
+    var buttons = document.querySelectorAll("[data-action]");
+    buttons.forEach(function (button) {
+      button.addEventListener("click", function () {
+        var action = button.getAttribute("data-action");
+        if (action === "details") showDetails();
+        else if (action === "maintenance") showMaintenance();
+        else if (action === "issue") showIssueForm();
+        else if (action === "close") closePanel();
+      });
+    });
+    var refreshButton = document.getElementById("refreshScanBtn");
+    if (refreshButton) {
+      refreshButton.addEventListener("click", function () {
+        ui.showLoadingState("Refreshing asset context...");
+        loadAssetForTarget(state.currentTargetIndex);
+      });
+    }
+    var issueForm = document.getElementById("issueForm");
+    if (issueForm) issueForm.addEventListener("submit", submitIssue);
+    document.querySelectorAll("[data-close-dialog]").forEach(function (button) {
+      button.addEventListener("click", function () {
+        var dialog = document.getElementById(button.getAttribute("data-close-dialog"));
+        if (dialog) dialog.close();
+      });
+    });
+  }
+
+  function attachDetectorState() {
+    var scene = document.querySelector("a-scene");
+    if (!scene) return;
+    scene.addEventListener("arReady", function () {
       state.isTrackReady = true;
       ui.showScanState("Scan an asset");
       initializeTargetButtons();
       loadAssetForTarget(state.currentTargetIndex);
     });
-
-    scene.addEventListener("arError", () => {
+    scene.addEventListener("arError", function () {
       state.isTrackReady = false;
-      ui.showErrorState("MindAR failed to initialize. Check the marker asset.");
+      ui.showErrorState("Camera or tracker failed. Allow camera access and use HTTPS.");
     });
   }
 
-  function bindRefreshAction() {
-    const refreshButton = document.getElementById("refreshScanBtn");
-    if (refreshButton) {
-      refreshButton.addEventListener("click", () => {
-        ui.showLoadingState("Refreshing asset context...");
-        loadAssetForTarget(state.currentTargetIndex);
-      });
-    }
-  }
-
   function initialize() {
+    ui.clearAsset();
     ui.showLoadingState("Initializing AR tracker...");
     initializeTargetButtons();
-    bindRefreshAction();
+    bindActions();
     attachDetectorState();
-
-    const targetPath = config.mindarTargetPath;
-    if (targetPath && targetPath.includes("placeholder-target.mind")) {
-      console.info("MindAR target file is intentionally placeholder only. Add the real .mind target file in frontend/ar/assets/targets/ before deployment.");
+    if (config.mindarTargetPath) {
+      fetch(config.mindarTargetPath, { method: "HEAD" }).then(function (res) {
+        if (!res.ok) console.warn("Marker target file missing: " + config.mindarTargetPath + ". Compile it with the MindAR Image Targets Compiler into frontend/ar/assets/targets/targets.mind (see docs/AR_DEVELOPER.md).");
+      }).catch(function () {
+        console.warn("Marker target file missing: " + config.mindarTargetPath + ". See docs/AR_DEVELOPER.md for how to compile it.");
+      });
     }
-
-    const demoAsset = config.assets[0];
-    ui.renderAsset(demoAsset);
     ui.showScanState("Scan an asset");
   }
 
   window.ARDigitalPassportAR = {
-    initialize,
-    switchTarget,
-    getCurrentTarget,
-    loadAssetForTarget
+    initialize: initialize,
+    switchTarget: switchTarget,
+    getCurrentTarget: getCurrentTarget,
+    loadAssetForTarget: loadAssetForTarget
   };
 
   if (document.readyState === "loading") {

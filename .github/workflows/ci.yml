@@ -1,0 +1,23 @@
+name: CI
+on:
+  push:
+  pull_request:
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install --prefix backend --no-audit --no-fund
+      - run: npm test --prefix backend
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: test -f frontend/dashboard/index.html && test -f frontend/ar/index.html && echo "frontend present"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: node --check tests/integration-check.js && node --check backend/scripts/init-db.js && node --check backend/scripts/seed-db.js

@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Asset Dashboard — AR Digital Passport</title>
+  <meta name="description" content="Admin dashboard for AR Digital Passport for Physical Assets." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./css/dashboard.css" />
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to main content</a>
+  <div class="shell">
+    <header class="topbar">
+      <div class="brand">
+        <p class="eyebrow">AR Digital Passport</p>
+        <h1>Asset Dashboard</h1>
+      </div>
+      <div class="topbar-actions">
+        <label class="api-label" for="apiBase">API
+          <input id="apiBase" type="url" spellcheck="false" placeholder="http://localhost:3000/api" />
+        </label>
+        <button id="reloadBtn" class="btn secondary" type="button">Refresh</button>
+        <button id="newAssetBtn" class="btn primary" type="button">+ New asset</button>
+      </div>
+    </header>
+
+    <div id="alertRegion" class="alert-region" role="alert" aria-live="polite"></div>
+
+    <main id="main">
+      <section class="cards" aria-label="Summary">
+        <article class="card"><p class="card-label">Total assets</p><p class="card-value" id="statTotal">–</p></article>
+        <article class="card"><p class="card-label">Operational</p><p class="card-value ok" id="statOperational">–</p></article>
+        <article class="card"><p class="card-label">Under maintenance</p><p class="card-value warn" id="statMaintenance">–</p></article>
+        <article class="card"><p class="card-label">Open issues</p><p class="card-value bad" id="statIssues">–</p></article>
+      </section>
+
+      <section class="panel" aria-label="Assets">
+        <div class="panel-head">
+          <h2>Assets</h2>
+          <p class="muted" id="resultCount">Loading…</p>
+        </div>
+        <div class="toolbar">
+          <label class="field inline">Search
+            <input id="searchInput" type="search" placeholder="ID, name, category, location…" autocomplete="off" />
+          </label>
+          <label class="field inline">Status
+            <select id="statusFilter">
+              <option value="">All statuses</option>
+              <option value="operational">operational</option>
+              <option value="maintenance">maintenance</option>
+              <option value="degraded">degraded</option>
+              <option value="offline">offline</option>
+              <option value="retired">retired</option>
+            </select>
+          </label>
+          <label class="field inline">Category
+            <select id="categoryFilter"><option value="">All categories</option></select>
+          </label>
+          <label class="field inline">Location
+            <select id="locationFilter"><option value="">All locations</option></select>
+          </label>
+        </div>
+        <div id="tableState" class="state" hidden></div>
+        <div class="table-wrap">
+          <table id="assetTable">
+            <thead>
+              <tr>
+                <th scope="col">Asset ID</th><th scope="col">Name</th><th scope="col">Category</th>
+                <th scope="col">Location</th><th scope="col">Status</th>
+                <th scope="col">Last maint.</th><th scope="col">Next maint.</th><th scope="col">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="assetRows"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel" aria-label="Issues">
+        <div class="panel-head">
+          <h2>Reported issues</h2>
+          <label class="field inline">Status
+            <select id="issueStatusFilter">
+              <option value="">All</option>
+              <option value="open">open</option>
+              <option value="in_progress">in_progress</option>
+              <option value="resolved">resolved</option>
+              <option value="rejected">rejected</option>
+            </select>
+          </label>
+        </div>
+        <div id="issueState" class="state" hidden></div>
+        <ul id="issueList" class="issue-list"></ul>
+      </section>
+    </main>
+  </div>
+
+  <!-- Asset details dialog -->
+  <dialog id="detailDialog" aria-labelledby="detailTitle">
+    <h2 id="detailTitle">Asset details</h2>
+    <div id="detailBody"></div>
+    <div class="dialog-actions">
+      <button class="btn secondary" type="button" data-close>Close</button>
+    </div>
+  </dialog>
+
+  <!-- Asset form dialog -->
+  <dialog id="assetDialog" aria-labelledby="assetDialogTitle">
+    <h2 id="assetDialogTitle">New asset</h2>
+    <form id="assetForm" method="dialog" novalidate>
+      <div class="form-grid">
+        <label class="field">Asset ID (optional, auto if blank)
+          <input name="id" placeholder="AST-007" pattern="AST-[0-9]{3,}" />
+        </label>
+        <label class="field">Name *<input name="name" required maxlength="128" /></label>
+        <label class="field">Category *<input name="category" required maxlength="64" /></label>
+        <label class="field">Location *<select name="location" id="assetLocationSelect" required></select></label>
+        <label class="field">Status *
+          <select name="status" required>
+            <option value="operational">operational</option>
+            <option value="maintenance">maintenance</option>
+            <option value="degraded">degraded</option>
+            <option value="offline">offline</option>
+            <option value="retired">retired</option>
+          </select>
+        </label>
+        <label class="field">Marker ID<input name="markerId" placeholder="projector-marker" /></label>
+        <label class="field">Last maintenance<input name="lastMaintenance" type="date" /></label>
+        <label class="field">Next maintenance<input name="nextMaintenance" type="date" /></label>
+        <label class="field full">Description<textarea name="description" rows="3"></textarea></label>
+        <label class="field">Image URL<input name="imageUrl" type="url" /></label>
+        <label class="field">Model URL<input name="modelUrl" type="url" /></label>
+      </div>
+      <p class="form-error" id="assetFormError" role="alert" hidden></p>
+      <div class="dialog-actions">
+        <button class="btn secondary" type="button" data-close>Cancel</button>
+        <button class="btn primary" type="submit" id="assetSubmit">Save asset</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Delete confirm -->
+  <dialog id="confirmDialog" aria-labelledby="confirmTitle">
+    <h2 id="confirmTitle">Delete asset?</h2>
+    <p id="confirmText" class="muted"></p>
+    <div class="dialog-actions">
+      <button class="btn secondary" type="button" data-close>Cancel</button>
+      <button class="btn danger" type="button" id="confirmDelete">Delete</button>
+    </div>
+  </dialog>
+
+  <script src="./js/config.js"></script>
+  <script src="./js/api.js"></script>
+  <script src="./js/app.js"></script>
+</body>
+</html>

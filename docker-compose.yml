@@ -1,0 +1,61 @@
+# Real-time stack: Postgres (real database, no simulation) + backend API.
+# Usage:
+#   docker compose up -d db            # start Postgres
+#   docker compose --profile tools run --rm db-seed   # schema + seed once
+#   docker compose up backend          # API on http://localhost:3000
+# Or everything at once (seed runs first, idempotent):
+#   docker compose --profile tools run --rm db-seed && docker compose up
+# Frontend (static):  python -m http.server 8000   (repo root)
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: ar-passport-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: arpassport
+      POSTGRES_PASSWORD: arpassport
+      POSTGRES_DB: arpassport
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U arpassport -d arpassport"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  backend:
+    build:
+      context: ./backend
+    container_name: ar-passport-api
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PORT: 3000
+      NODE_ENV: production
+      DATABASE_URL: postgresql://arpassport:arpassport@db:5432/arpassport
+      CORS_ORIGIN: "*"
+    ports:
+      - "3000:3000"
+
+  # One-shot schema+seed job (idempotent, safe to re-run):
+  db-seed:
+    image: postgres:16-alpine
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./database/schema.sql:/sql/schema.sql:ro
+      - ./database/seed.sql:/sql/seed.sql:ro
+    command: >
+      sh -c "psql postgresql://arpassport:arpassport@db:5432/arpassport -f /sql/schema.sql &&
+             psql postgresql://arpassport:arpassport@db:5432/arpassport -f /sql/seed.sql &&
+             echo SEED_OK"
+    profiles: ["tools"]
+
+volumes:
+  pgdata:
