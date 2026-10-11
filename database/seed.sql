@@ -3,7 +3,9 @@
 -- Run AFTER schema.sql:
 --   psql "$DATABASE_URL" -f database/schema.sql
 --   psql "$DATABASE_URL" -f database/seed.sql
--- Idempotent: safe to re-run (uses ON CONFLICT).
+-- Locations, assets, and markers are idempotent (ON CONFLICT).
+-- Re-running this file can DUPLICATE maintenance_records and issues
+-- rows — those inserts have no unique key / ON CONFLICT clause.
 -- ============================================================
 
 BEGIN;
@@ -43,6 +45,7 @@ INSERT INTO asset_markers (marker_id, asset_id, target_index) VALUES
 ON CONFLICT (marker_id) DO UPDATE SET asset_id=EXCLUDED.asset_id, target_index=EXCLUDED.target_index;
 
 -- ---------- maintenance records ----------
+-- No unique constraint: re-running seed.sql can duplicate these rows.
 INSERT INTO maintenance_records (asset_id, maintenance_date, type, description, performed_by, cost) VALUES
   ('AST-001', '2026-09-18', 'routine',    'Cleaned air filter, replaced lamp hours counter, verified HDMI inputs.', 'Campus Facilities', 450.00),
   ('AST-001', '2026-06-10', 'inspection', 'Routine inspection before semester start. Focus calibrated.', 'Campus Facilities', 0.00),
@@ -54,6 +57,8 @@ INSERT INTO maintenance_records (asset_id, maintenance_date, type, description, 
   ('AST-006', '2026-08-01', 'upgrade',    'Upgraded firmware and re-applied VLAN configuration.', 'IT Admin', 0.00);
 
 -- ---------- issues ----------
+-- No unique constraint: re-running seed.sql can duplicate these rows.
+-- AST-003 nozzle issue priority is 'high' (must match backend/src/seedData.js).
 INSERT INTO issues (asset_id, description, status, priority, reported_by, reported_at) VALUES
   ('AST-003', 'Nozzle keeps clogging mid-print on PLA jobs longer than 2 hours.', 'open', 'high', 'Student — Maker Club', '2026-10-02 10:15:00+00'),
   ('AST-005', 'Right controller loses tracking near the windows; possibly IR interference.', 'in_progress', 'medium', 'Lab Assistant', '2026-10-05 09:00:00+00'),

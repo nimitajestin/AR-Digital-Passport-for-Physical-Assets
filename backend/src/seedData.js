@@ -44,7 +44,7 @@ const MAINTENANCE = [
 ];
 
 const ISSUES = [
-  { id: 1, asset_id: 'AST-003', description: 'Nozzle keeps clogging mid-print on PLA jobs longer than 2 hours.', status: 'open', priority: 'medium', reported_by: 'Student — Maker Club', reported_at: '2026-10-02T10:15:00.000Z' },
+  { id: 1, asset_id: 'AST-003', description: 'Nozzle keeps clogging mid-print on PLA jobs longer than 2 hours.', status: 'open', priority: 'high', reported_by: 'Student — Maker Club', reported_at: '2026-10-02T10:15:00.000Z' },
   { id: 2, asset_id: 'AST-005', description: 'Right controller loses tracking near the windows; possibly IR interference.', status: 'in_progress', priority: 'medium', reported_by: 'Lab Assistant', reported_at: '2026-10-05T09:00:00.000Z' },
   { id: 3, asset_id: 'AST-001', description: 'Remote control missing from classroom drawer; projector itself works.', status: 'resolved', priority: 'low', reported_by: 'Faculty — CL-6', reported_at: '2026-09-20T14:30:00.000Z' },
   { id: 4, asset_id: 'AST-004', description: 'Channel 2 probe reads 5% high compared to channel 1.', status: 'open', priority: 'medium', reported_by: 'Student — ELC Lab', reported_at: '2026-10-07T11:45:00.000Z' }
